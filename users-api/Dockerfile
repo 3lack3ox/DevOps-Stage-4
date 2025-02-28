@@ -4,8 +4,11 @@ FROM maven:3.8-openjdk-8 AS builder
 # Set the working directory for the build process
 WORKDIR /app
 
+# Copy pom.xml
+COPY pom.xml ./
+
 # Copy the application files to the container
-COPY . .
+COPY src ./src
 
 # Build the Spring Boot application (skip tests for faster builds)
 RUN mvn clean package -DskipTests
@@ -17,11 +20,11 @@ FROM openjdk:8-jre-alpine
 WORKDIR /app
 
 # Copy the JAR file from the builder stage
-COPY --from=builder /app/target/users-api-0.0.1-SNAPSHOT.jar /app/users-api.jar
+COPY --from=builder /app/target/*.jar app.jar
 
 # Expose the application's port
 EXPOSE 8083
 
 # Run the Spring Boot application
-CMD ["java", "-jar", "/app/users-api.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 

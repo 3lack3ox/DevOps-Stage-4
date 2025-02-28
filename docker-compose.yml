@@ -2,26 +2,26 @@ version: '3.8'
 
 services:
   traefik:
-    image: "traefik:v3.3.4"
+    image: "traefik:v2.9"
     container_name: "traefik"
     restart: always
     command:
-      - "--api.insecure=true --providers.docker"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--api.dashboard=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.traefik.address=:8084"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=jason.awaitoma@gmail.com"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
     ports:
       - "80:80"
       - "443:443"
-      - "8084:8084"  
+      - "8084:8084" # for dashboard 
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./traefik.yml:/etc/traefik/traefik.yml"
-      - "./dynamic.yml:/etc/traefik/dynamic.yml"
       - "./letsencrypt:/letsencrypt"
     networks:
       - proxy-network
@@ -31,7 +31,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - app-network
+      - proxy-network
     volumes:
       - redis-data:/data
 
@@ -48,7 +48,6 @@ services:
       - "traefik.http.routers.frontend.entrypoints=web,websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
     networks:
-      - app-network
       - proxy-network
 
   auth-api:
@@ -64,7 +63,6 @@ services:
       - "traefik.http.routers.auth.entrypoints=web,websecure"
       - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
     networks:
-      - app-network
       - proxy-network
 
   todos-api:
@@ -80,7 +78,6 @@ services:
       - "traefik.http.routers.todos.entrypoints=web,websecure"
       - "traefik.http.routers.todos.tls.certresolver=letsencrypt"
     networks:
-      - app-network
       - proxy-network
 
   users-api:
@@ -96,7 +93,6 @@ services:
       - "traefik.http.routers.users.entrypoints=web,websecure"
       - "traefik.http.routers.users.tls.certresolver=letsencrypt"
     networks:
-      - app-network
       - proxy-network
 
   log-message-processor:
@@ -105,11 +101,9 @@ services:
     env_file:
       - .env  
     networks:
-      - app-network
+      - proxy-network
 
 networks:
-  app-network:
-    driver: bridge  
   proxy-network:
     driver: bridge
 
