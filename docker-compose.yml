@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: "traefik:v3.3.4"
+    container_name: "traefik"
+    restart: always
+    command:
+      - "--api.insecure=true --providers.docker"
+      - "--api.dashboard=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.traefik.address=:8084"
+      - "--certificatesresolvers.letsencrypt.acme.email=jason.awaitoma@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8084:8084"  
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik.yml:/etc/traefik/traefik.yml"
+      - "./dynamic.yml:/etc/traefik/dynamic.yml"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - proxy-network
+
+  redis-queue:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`tensai.com.ng`)"
+      - "traefik.http.routers.frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+    networks:
+      - app-network
+      - proxy-network
+
+  auth-api:
+    build:
+      context: ./auth-api
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.tensai.com.ng`)"
+      - "traefik.http.routers.auth.entrypoints=web,websecure"
+      - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+    networks:
+      - app-network
+      - proxy-network
+
+  todos-api:
+    build:
+      context: ./todos-api
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.todos.rule=Host(`todos.tensai.com.ng`)"
+      - "traefik.http.routers.todos.entrypoints=web,websecure"
+      - "traefik.http.routers.todos.tls.certresolver=letsencrypt"
+    networks:
+      - app-network
+      - proxy-network
+
+  users-api:
+    build:
+      context: ./users-api
+    ports:
+      - "8083:8083"
+    env_file:
+      - .env  
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=Host(`users.tensai.com.ng`)"
+      - "traefik.http.routers.users.entrypoints=web,websecure"
+      - "traefik.http.routers.users.tls.certresolver=letsencrypt"
+    networks:
+      - app-network
+      - proxy-network
+
+  log-message-processor:
+    build:
+      context: ./log-message-processor
+    env_file:
+      - .env  
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge  
+  proxy-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+
