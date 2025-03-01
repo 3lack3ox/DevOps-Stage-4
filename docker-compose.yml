@@ -11,6 +11,7 @@ services:
       - "--api.dashboard=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.traefik.address=:8084"
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
@@ -42,10 +43,15 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    depends_on:
+      - auth-api
+      - todos-api
+      - users-api
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`tensai.com.ng`)"
       - "traefik.http.routers.frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.frontend.tls=true"  
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
     networks:
       - proxy-network
@@ -59,8 +65,9 @@ services:
       - .env
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=Host(`auth.tensai.com.ng`)"
+      - "traefik.http.routers.auth.rule=Host(`auth.tensai.com.ng`,`auth-api.tensai.com.ng`)"
       - "traefik.http.routers.auth.entrypoints=web,websecure"
+      - "traefik.http.routers.auth.tls=true"
       - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
     networks:
       - proxy-network
@@ -74,8 +81,9 @@ services:
       - .env
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.todos.rule=Host(`todos.tensai.com.ng`)"
+      - "traefik.http.routers.todos.rule=Host(`todos.tensai.com.ng`,`todos-api.tensai.com.ng`)"
       - "traefik.http.routers.todos.entrypoints=web,websecure"
+      - "traefik.http.routers.todos.tls=true"
       - "traefik.http.routers.todos.tls.certresolver=letsencrypt"
     networks:
       - proxy-network
@@ -86,11 +94,12 @@ services:
     ports:
       - "8083:8083"
     env_file:
-      - .env  
+      - .env
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.users.rule=Host(`users.tensai.com.ng`)"
+      - "traefik.http.routers.users.rule=Host(`users.tensai.com.ng`,`users-api.tensai.com.ng`)"
       - "traefik.http.routers.users.entrypoints=web,websecure"
+      - "traefik.http.routers.users.tls=true"
       - "traefik.http.routers.users.tls.certresolver=letsencrypt"
     networks:
       - proxy-network
@@ -100,6 +109,8 @@ services:
       context: ./log-message-processor
     env_file:
       - .env  
+    depends_on:
+      - redis-queue
     networks:
       - proxy-network
 
